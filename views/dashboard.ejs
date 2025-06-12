@@ -1,0 +1,47 @@
+<h2>Dashboard</h2>
+
+<a href="/logout"><button>Logout</button></a><br><br>
+
+<form id="uploadForm" enctype="multipart/form-data">
+  <input type="file" name="files" multiple required><br><br>
+  <progress id="progressBar" value="0" max="100" style="width: 300px;"></progress><br>
+  <button type="submit">Upload</button>
+</form>
+
+<hr>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
+  <% files.forEach(file => { %>
+    <div style="border: 1px solid #ccc; padding: 10px; text-align: center;">
+      <% if (file.fileType.startsWith('image')) { %>
+        <img src="<%= file.filePath %>" width="100%" style="max-height: 150px; object-fit: cover;"><br>
+      <% } else if (file.fileType.startsWith('video')) { %>
+        <video src="<%= file.filePath %>" width="100%" style="max-height: 150px;" controls></video><br>
+      <% } %>
+      <a href="<%= file.filePath %>" download><button>Download</button></a>
+      <form method="POST" action="/delete/<%= file._id %>">
+        <button>Delete</button>
+      </form>
+    </div>
+  <% }) %>
+</div>
+
+<script>
+document.getElementById('uploadForm').onsubmit = function (e) {
+  e.preventDefault();
+  const formData = new FormData(this);
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/upload');
+  xhr.upload.onprogress = function (e) {
+    if (e.lengthComputable) {
+      document.getElementById('progressBar').value = (e.loaded / e.total) * 100;
+    }
+  };
+  xhr.onload = function () {
+    if (xhr.status === 200) {
+      window.location.reload();
+    }
+  };
+  xhr.send(formData);
+};
+</script>
