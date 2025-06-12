@@ -10,38 +10,104 @@
 
 <hr>
 
-<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
-  <% files.forEach(file => { %>
-    <div style="border: 1px solid #ccc; padding: 10px; text-align: center;">
+<!-- Modal Preview -->
+<div id="previewModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.8); justify-content:center; align-items:center; flex-direction: column; z-index: 1000;">
+  <span onclick="closeModal()" style="position:absolute; top:20px; right:30px; font-size:30px; color:white; cursor:pointer;">&times;</span>
+  
+  <div style="position: absolute; top: 50%; transform: translateY(-50%); left: 20px; font-size: 40px; color: white; cursor: pointer;" onclick="prevPreview()">&#10094;</div>
+  <div style="position: absolute; top: 50%; transform: translateY(-50%); right: 20px; font-size: 40px; color: white; cursor: pointer;" onclick="nextPreview()">&#10095;</div>
+  
+  <div id="modalContent" style="max-width:90%; max-height:90%; display: flex; justify-content: center; align-items: center;"></div>
+</div>
+
+<!-- File Thumbnails -->
+<div id="fileContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
+  <% files.forEach((file, index) => { %>
+    <div class="file-box" style="border: 1px solid #ccc; padding: 10px; text-align: center;">
       <% if (file.fileType.startsWith('image')) { %>
-        <img src="<%= file.filePath %>" width="100%" style="max-height: 150px; object-fit: cover;"><br>
+        <img src="<%= file.filePath %>" onclick="openModal(<%= index %>)" style="width: 100%; max-height: 150px; object-fit: cover; cursor:pointer;" />
       <% } else if (file.fileType.startsWith('video')) { %>
-        <video src="<%= file.filePath %>" width="100%" style="max-height: 150px;" controls></video><br>
+        <video src="<%= file.filePath %>" onclick="openModal(<%= index %>)" style="width: 100%; max-height: 150px; object-fit: cover; cursor:pointer;" muted></video>
       <% } %>
-      <a href="<%= file.filePath %>" download><button>Download</button></a>
-      <form method="POST" action="/delete/<%= file._id %>">
-        <button>Delete</button>
-      </form>
+      <div style="display: flex; justify-content: center; gap: 10px; margin-top: 10px;">
+        <a href="<%= file.filePath %>" download>
+          <button type="button">Download</button>
+        </a>
+        <form method="POST" action="/delete/<%= file._id %>">
+          <button type="submit">Delete</button>
+        </form>
+      </div>
     </div>
-  <% }) %>
+  <% }); %>
 </div>
 
 <script>
-document.getElementById('uploadForm').onsubmit = function (e) {
-  e.preventDefault();
-  const formData = new FormData(this);
-  const xhr = new XMLHttpRequest();
-  xhr.open('POST', '/upload');
-  xhr.upload.onprogress = function (e) {
-    if (e.lengthComputable) {
-      document.getElementById('progressBar').value = (e.loaded / e.total) * 100;
-    }
+  const files = <%- JSON.stringify(files) %>;
+  let currentIndex = 0;
+
+  document.getElementById('uploadForm').onsubmit = function (e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/upload');
+
+    xhr.upload.onprogress = function (e) {
+      if (e.lengthComputable) {
+        document.getElementById('progressBar').value = (e.loaded / e.total) * 100;
+      }
+    };
+
+    xhr.onload = function () {
+      if (xhr.status === 200) {
+        window.location.reload();
+      }
+    };
+
+    xhr.send(formData);
   };
-  xhr.onload = function () {
-    if (xhr.status === 200) {
-      window.location.reload();
+
+  function openModal(index) {
+    currentIndex = index;
+    showPreview(currentIndex);
+    document.getElementById("previewModal").style.display = "flex";
+  }
+
+  function closeModal() {
+    document.getElementById("previewModal").style.display = "none";
+    document.getElementById("modalContent").innerHTML = "";
+  }
+
+  function showPreview(index) {
+    const file = files[index];
+    const container = document.getElementById("modalContent");
+    if (file.fileType.startsWith('image')) {
+      container.innerHTML = `<img src="${file.filePath}" style="max-width: 100%; max-height: 100%;">`;
+    } else if (file.fileType.startsWith('video')) {
+      container.innerHTML = `<video src="${file.filePath}" controls autoplay style="max-width: 100%; max-height: 100%;"></video>`;
     }
-  };
-  xhr.send(formData);
-};
+  }
+
+  function nextPreview() {
+    currentIndex = (currentIndex + 1) % files.length;
+    showPreview(currentIndex);
+  }
+
+  function prevPreview() {
+    currentIndex = (currentIndex - 1 + files.length) % files.length;
+    showPreview(currentIndex);
+  }
+
+  // 👇 ESC key to close modal
+ document.addEventListener('keydown', function (e) {
+    const modal = document.getElementById("previewModal");
+    if (modal.style.display === "flex") {
+      if (e.key === 'Escape') {
+        closeModal();
+      } else if (e.key === 'ArrowRight') {
+        nextPreview();
+      } else if (e.key === 'ArrowLeft') {
+        prevPreview();
+      }
+    }
+  });
 </script>
